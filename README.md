@@ -43,3 +43,5 @@ override.tf.json
 terraform.rc
 ```
 new line
+
+First change for IDE PyCharm
