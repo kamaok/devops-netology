@@ -45,3 +45,4 @@ terraform.rc
 new line
 
 First change for IDE PyCharm
+The second change for IDE PyCharm
