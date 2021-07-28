@@ -200,7 +200,7 @@ $ git add branching/merge.sh
 ```
 
 ```
-git commit -m "merge: use shift"
+$ git commit -m "merge: use shift"
 ```
 ```bash
 [git-merge 226d9b7] merge: use shift
@@ -274,7 +274,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 $ git add branching/rebase.sh
 ```
 ```
-git commit -m "rebase: @ instead *"
+$ git commit -m "rebase: @ instead *"
 ```
 ```bash
 [main b9ace55] rebase: @ instead *
@@ -784,9 +784,3 @@ To github.com:kamaok/devops-netology.git
 
 
 [Merge `git-rebase` in `main` - Check network in Github](https://github.com/kamaok/devops-netology/network)
-
-```bash
-error: cannot 'fixup' without a previous commit
-You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.
-Or you can abort the rebase with 'git rebase --abort'.
-```
