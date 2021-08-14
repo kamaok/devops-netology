@@ -131,6 +131,45 @@ $ ls -l [0-9]*.txt | wc -l
 
 `[[ -d /tmp ]]` - проверка существует ли каталог /tmp
 
+### Основываясь на знаниях о просмотре текущих (например, PATH) и установке новых переменных; командах, которые мы рассматривали, добейтесь в выводе type -a bash в виртуальной машине наличия первым пунктом в списке:
+
+```bash
+bash is /tmp/new_path_directory/bash
+bash is /usr/local/bin/bash
+bash is /bin/bash
+```
+
+(прочие строки могут отличаться содержимым и порядком)
+
+```bash
+vagrant@vagrant:~$ type -a bash
+bash is /usr/bin/bash
+bash is /bin/bash
+```
+
+```bash
+vagrant@vagrant:~$ mkdir /tmp/new_path_directory
+```
+
+```bash
+vagrant@vagrant:~$ cp /usr/bin/bash /tmp/new_path_directory
+```
+
+```bash
+vagrant@vagrant:~$ grep PATH ~/.bashrc
+export PATH=/tmp/new_path_directory:$PATH
+```
+
+```bash
+vagrant@vagrant:~$ source .bashrc
+```
+
+```bash
+vagrant@vagrant:~$ type -a bash
+bash is /tmp/new_path_directory/bash
+bash is /usr/bin/bash
+bash is /bin/bash
+```
 
 ### Чем отличается планирование команд с помощью `batch` и `at`?
 
