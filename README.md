@@ -1,184 +1,252 @@
-### Установите средство виртуализации [Oracle VirtualBox](https://www.virtualbox.org/).
+# Домашнее задание к занятию "3.3. Операционные системы, лекция 1"
 
-```bash
-$ wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
-$ sudo apt-add-repository "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $(lsb_release -cs) contrib"
-$ sudo apt-get update
-$ sudo apt-get install virtualbox-6.1
-$ dpkg -l | grep virtualbox
-ii  virtualbox-6.1 6.1.26-145957~Ubuntu~bionic  amd64 Oracle VM VirtualBox
-```
+1. Какой системный вызов делает команда `cd`? В прошлом ДЗ мы выяснили, что `cd` не является самостоятельной  программой, это `shell builtin`, поэтому запустить `strace` непосредственно на `cd` не получится. Тем не менее, вы можете запустить `strace` на `/bin/bash -c 'cd /tmp'`. В этом случае вы увидите полный список системных вызовов, которые делает сам `bash` при старте. Вам нужно найти тот единственный, который относится именно к `cd`.
 
-### Установите средство автоматизации [Hashicorp Vagrant](https://www.vagrantup.com/).
+    Cистемный вызов `chdir`
+    `chdir("/tmp")`
 
-```bash
-$ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-$ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com (lsb_release -cs) main"
-$ sudo apt-get update
-$ sudo apt-get install vagrant
-$ vagrant --version
-Vagrant 2.2.18
-```
-### Ознакомьтесь с графическим интерфейсом VirtualBox, посмотрите как выглядит виртуальная машина, которую создал для вас Vagrant, какие аппаратные ресурсы ей выделены. Какие ресурсы выделены по-умолчанию?
+1. Попробуйте использовать команду `file` на объекты разных типов на файловой системе. Например:
+    ```bash
+    vagrant@netology1:~$ file /dev/tty
+    /dev/tty: character special (5/0)
+    vagrant@netology1:~$ file /dev/sda
+    /dev/sda: block special (8/0)
+    vagrant@netology1:~$ file /bin/bash
+    /bin/bash: ELF 64-bit LSB shared object, x86-64
+    ```
+    Используя `strace` выясните, где находится база данных `file` на основании которой она делает свои догадки.
 
-```bash
-CPU: 2
-RAM: 1024MB
-HDD: 64GB (vmdk-формат)
-```
-### Ознакомьтесь с возможностями конфигурации VirtualBox через Vagrantfile: [документация](https://www.vagrantup.com/docs/providers/virtualbox/configuration.html). Как добавить оперативной памяти или ресурсов процессора виртуальной машине?
+    ```bash
+    $ strace file /dev/sda
+    openat(AT_FDCWD, "/etc/magic", O_RDONLY) = 3
+    openat(AT_FDCWD, "/usr/share/misc/magic.mgc", O_RDONLY) = 3
+    ```
+    База данных `file` находится в файле `/usr/share/misc/magic.mgc`,
+    который в свою очередь является символьной ссылкой на файл `/usr/lib/file/magic.mgc`
+    ```bash
+    $ ls -al  /usr/share/misc/ | grep magic
+    lrwxrwxrwx   1 root root      13 мар 21  2020 magic -> ../file/magic
+    lrwxrwxrwx   1 root root      24 мая 12  2020 magic.mgc -> ../../lib/file/magic.mgc
+    ```
 
-```bash
-$ cat Vagrantfile
-Vagrant.configure("2") do |config|
-   config.vm.box = "bento/ubuntu-20.04"
-   config.vm.provider "virtualbox" do |v|
-     v.memory = 2048
-     v.cpus = 3
-   end
-end
-```
-
-### Какой переменной можно задать длину журнала `history`, и на какой строчке manual это описывается?
-`HISTFILESIZE`
-
-Строка 734
-```bash
-$ man bash | grep -A2 -n HISTFILESIZE
-734:       HISTFILESIZE
-735-              The maximum number of lines contained in the history file.  When this variable is assigned a value, the history file is  trun‐
-736-              cated,  if  necessary,  to contain no more than that number of lines by removing the oldest entries.  The history file is also
-```
-
-### Что делает директива `ignoreboth` в bash?
-
-`ignoreboth` - это значение переменной оболочки `HISTCONTROL`
-
-Переменная `HISTCONTROL` определяет как команды сохраняются в списке истории
-
-Значение `ignoreboth` является сокращением для `ignorespace` и `ignoredups`.
-
-Значение `ignoredups` приводит к тому, что дублирующиеся строки не сохраняются в журнал/список истории команд
-
-Значение `ignorespace` приводит к тому, что строки, начинающиеся с символа пробела, не сохраняются в журнал/список истории команд
-
-т.е. при присваивании переменной `HISTCONTROL` значения `ignoreboth` в журнал/список истории команд не будут сохраняться
-дублирующиеся строки и строки, начинающиеся с символа пробела
+1. Предположим, приложение пишет лог в текстовый файл. Этот файл оказался удален (deleted в lsof), однако возможности сигналом сказать приложению переоткрыть файлы или просто перезапустить приложение – нет. Так как приложение продолжает писать в удаленный файл, место на диске постепенно заканчивается. Основываясь на знаниях о перенаправлении потоков предложите способ обнуления открытого удаленного файла (чтобы освободить место на файловой системе).
 
 
-### В каких сценариях использования применимы скобки `{}` и на какой строчке `man bash` это описано?
-- опредление переменных массива. Строка 898. Пример: `${name[subscript]}`
-- расскрытие скобок. Строка 946. Пример: `a{d,c,b}e`
-- подстановка переменных/парамертров. Строка 1005. Пример: `${переменная}`
-- функции. Строка 2618. Пример:
-```bash
-myfunction () { тело функции } { виды переадресации }
-```
-Либо
-```bash
-function myfunction [()] { тело функции } { виды переадресации }
-```
 
 
-### Основываясь на предыдущем вопросе, как создать однократным вызовом touch 100000 файлов? А получилось ли создать 300000? Если нет, то почему?
+1. Занимают ли зомби-процессы какие-то ресурсы в ОС (CPU, RAM, IO)?
 
-```bash
-touch {1..100000}.txt`
-```
-```bash
-$ ls -l [0-9]*.txt | wc -l
-100000
-```
+    Нет, зомби процесс - это процесс, который уже завершил свое выполнение, но по какой-либо причине
+    родительский процесс не обработал код возврата дочернего процесса, в результате чего такой дочерний процесс
+    становится зомби-процессом и присутствует в списке процессов в операционной системе не потребляя никаких ресурсов т.к. по факту это процесс        уже был выполнен
 
-```bash
-$ touch {1..300000}.txt
-bash: /usr/bin/touch: Argument list too long
-```
+1. В iovisor BCC есть утилита `opensnoop`:
+    ```bash
+    root@vagrant:~# dpkg -L bpfcc-tools | grep sbin/opensnoop
+    /usr/sbin/opensnoop-bpfcc
+    ```
+    На какие файлы вы увидели вызовы группы `open` за первую секунду работы утилиты? Воспользуйтесь пакетом `bpfcc-tools` для Ubuntu 20.04. Дополнительные [сведения по установке](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
 
-Дефолтный размер аргументов командной составляет 8192 KB
-```bash
-$ ulimit -s
-```
-```
-8192
-```
+    ```bash
+    $ apt-get install bpfcc-tools
+    ```
 
-При необходимости его можно увеличить, например, до 65535 KB
-```bash
-$ ulimit -s 65535
-```
-```bas
-$ ulimit -s
-```
-```bash
-65535
-```
+    ```bash
+    $ dpkg -L bpfcc-tools | grep sbin/opensnoop
+    /usr/sbin/opensnoop-bpfcc
+    ```
+
+    ```bash
+    $ strace  -e openat opensnoop-bpfcc > out.txt 2>&1
+    ```
+
+    ```bash
+    $ cat open out.txt
+    execve("/usr/sbin/opensnoop-bpfcc", ["opensnoop-bpfcc"], 0x7ffea352afb0 /* 16 vars */) = 0
+    openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libpthread.so.0", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libdl.so.2", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libutil.so.1", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libexpat.so.1", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libz.so.1", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/usr/lib/locale/locale-archive", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache", O_RDONLY) = 3
+    openat(AT_FDCWD, "/usr/bin/pyvenv.cfg", O_RDONLY) = -1 ENOENT (No such file or directory)
+    openat(AT_FDCWD, "/usr/pyvenv.cfg", O_RDONLY) = -1 ENOENT (No such file or directory)
+    openat(AT_FDCWD, "/etc/localtime", O_RDONLY|O_CLOEXEC) = 3
+    openat(AT_FDCWD, "/usr/lib/python3.8", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_DIRECTORY) = 3
+    .....
+    ```
+1. Какой системный вызов использует `uname -a`? Приведите цитату из man по этому системному вызову, где описывается альтернативное местоположение в `/proc`, где можно узнать версию ядра и релиз ОС.
 
 
-После чего появляется возможность создать 300000 файлов
-```bash
-$ touch {1..300000}.txt
-```
-```bash
-$ ls -l [0-9]*.txt | wc -l
-300000
-```
+    ```bash
+    $ strace uname -a
+    ```
+
+    ```bash
+    uname({sysname="Linux", nodename="vagrant", ...}) = 0
+    uname({sysname="Linux", nodename="vagrant", ...}) = 0
+    write(1, "Linux vagrant 5.4.0-80-generic #"..., 105Linux vagrant 5.4.0-80-generic #90-Ubuntu SMP Fri Jul 9 22:49:44 UTC 2021 x86_64 x86_64     x86_64 GNU/Linux
+    ) = 105
+    ```
+
+    Системный вызов `uname`
+
+    ```bash
+    $ apt-get install manpages-dev
+    ```
+    ```bash
+    $ man 2 uname | grep /proc
+           Part of the utsname information is also accessible via /proc/sys/kernel/{ostype, hostname, osrelease, version, domainname}.
+    ```
+    ```bash
+    $ cat /proc/sys/kernel/hostname
+    vagrant
+    $ cat /proc/sys/kernel/osrelease
+    5.4.0-80-generic
+    $ cat /proc/sys/kernel/version
+    #90-Ubuntu SMP Fri Jul 9 22:49:44 UTC 2021
+    $ cat /proc/sys/kernel/domainname
+    (none)
+    ```
+1. Чем отличается последовательность команд через `;` и через `&&` в bash? Например:
+    ```bash
+    root@netology1:~# test -d /tmp/some_dir; echo Hi
+    Hi
+    root@netology1:~# test -d /tmp/some_dir && echo Hi
+    root@netology1:~#
+    ```
+    Есть ли смысл использовать в bash `&&`, если применить `set -e`?
 
 
-### В man bash поищите по `/\[\[`. Что делает конструкция `[[ -d /tmp ]]`
+     - последовательность команд через `;`
 
-`[[ ]]` - условные выражения
+    Команды будут выполнены последовательно независимо от кода возврата/выхода предыдущей команды
+    т.е. сначало выполнится команда  `test -d /tmp/some_dir` с кодом возврата 1 т.к. каталога `/tmp/some_dir` не существует
+    Затем выполнится команда `echo Hi`
 
-`[[ -d /tmp ]]` - проверка существует ли каталог /tmp
+    - последовательность команд через `&&`
 
-### Основываясь на знаниях о просмотре текущих (например, PATH) и установке новых переменных; командах, которые мы рассматривали, добейтесь в выводе type -a bash в виртуальной машине наличия первым пунктом в списке:
+    `&&` - выполнить логическую операцию `И`
+    Сначало выполняется первая команда, а вторая команда будет выполняться только в том случае, если первая команда
+    завершилась успешно
+    т.е сначало выполнится команду `test -d /tmp/some_dir` с кодом возврата 1 т.к. каталога `/tmp/some_dir` не существует, поэтому
+    команда `echo Hi` выполняться не будет
 
-```bash
-bash is /tmp/new_path_directory/bash
-bash is /usr/local/bin/bash
-bash is /bin/bash
-```
 
-(прочие строки могут отличаться содержимым и порядком)
 
-```bash
-vagrant@vagrant:~$ type -a bash
-bash is /usr/bin/bash
-bash is /bin/bash
-```
+    Set позволяет управлять параметрами оболочки и командной строки
 
-```bash
-vagrant@vagrant:~$ mkdir /tmp/new_path_directory
-```
+    Параметр `-e (errexit)` приводит к прекращению выполнения ВСЕХ дальнейших команд и немедленному выходу
+    если текущая команда выполнилась с кодом выхода отличным от нуля
 
-```bash
-vagrant@vagrant:~$ cp /usr/bin/bash /tmp/new_path_directory
-```
+    А конструкция `&&` позволяет не выполнять следующую команду, если предыдущая завершилась с кодом выхода отличным от нуля
+    При этом все остальные команды, которые не следуют за конструкцией `&&` могут/будут выполняться
 
-```bash
-vagrant@vagrant:~$ grep PATH ~/.bashrc
-export PATH=/tmp/new_path_directory:$PATH
-```
+    т.е. если, например, в скрипте есть несколько команд и необходимо сразу прекращать выполнение скрипта,если завершение какой-либо команды
+    было неуспешным (не с нулевым кодом возврата/завершения), то тогда нужно использовать опцию `-e(errexit)` через установку
+    в начале скрипта этого параметра с помощью
+    `set -e`
 
-```bash
-vagrant@vagrant:~$ source .bashrc
-```
+    Если же в таком же скрипте одна из команда не должна выполняться,если предыдущая выполнилась некорректно,
+    но при этом нужно продолжать выполнение остальных команд, тогда нужно использовать конструкцию `&&`
 
-```bash
-vagrant@vagrant:~$ type -a bash
-bash is /tmp/new_path_directory/bash
-bash is /usr/bin/bash
-bash is /bin/bash
-```
+    При этом если глобально( в самом начале скрипта) установлен флаг `-e` его можно отключить для команды(в данном случае команды command 3), чье неуспешное завершение приводит к тому, что следующая команда не выполнится, но при этом продолжится выполнение дальнейших команд в  скрипте
 
-### Чем отличается планирование команд с помощью `batch` и `at`?
+    ```bash
+    #!/usr/bin/env bash
+    set -e
+    command 1
+    command 2
+    set +e
+    command 3 && command4
+    set -e
+    command5
+    ```
 
-`at` – это утилита командной строки, которая позволяет планировать выполнение команд в определенное время. Задания, созданные с помощью at, выполняются только один раз.
+1. Из каких опций состоит режим bash `set -euxo pipefail` и почему его хорошо было бы использовать в сценариях?
 
-`batch` или его псевдоним `at -b`, планирует задания и выполняет их в очереди пакетов, когда позволяет уровень загрузки системы.
-По умолчанию задания выполняются, когда средняя загрузка системы ниже 1,5.
-Значение загрузки может быть указано при вызове демона `atd`.
-Если средняя загрузка системы выше указанной, задания будут ждать в очереди.
 
-т.е. `at` выполняется в указанное время незаависимо от нагрузки системы перед стартом выполнения задачи, a `batch`
-выполняется в указанное время, если нагрузка в системе не превышает пороговое значение, установленное в настройках демона `atd`
+    `-e(errexit)` - прекращение выполнения ВСЕХ дальнейших команд и немедленный выход со скрипта, если текущая команда выполнилась с кодом выхода отличным от нуля.
+
+    Полезно, когда нужно прерать дальнейшее выполнение команд/скрипта, если зафейлилась предыдущая команда
+
+    `-u(nounset)` - Интерпретировать при подстановках неустановленные переменные и параметры, как ошибки (кроме специальных переменных `$@` и `$*`)
+    т.е. при попытке подставить неопределенную переменную или параметр, интерпретатор bash выведет сообщение об ошибке и прекратит дальнейшее
+    выполнение команд/скрипта.
+
+    Полезно, чтобы выполнять команды с гарантированно установленными переменными/параметрами
+
+    Например, чтобы не получилось `rm -rf /etc/${NON_SETUP_VARIABLE}` и при неустановленной переменной `NON_SETUP_VARIABLE`
+    ее значение ожидаемо подставится в пустое значение/null в результате чего получится `rm -rf /etc/`, что приведет к удалению каталога `/etc` , а это явно не то, что задумывалось.
+
+
+    `-x(xtrace)` - отображать команды вместе с их аргументами, когда они выполняются.
+
+    Это обеспечивает пошаговую трассировку выполнения команд.
+
+    Полезно для дебага выполнения команд.
+
+    `-o` - активирует заданный режим работы
+
+    В данном случае активирует режим работы `pipefail`,который
+    заменяет код возврата всего конвеера(pipeline) на код возврата последней неудачно завершившейся команды
+    или нулевой код возврата, если все команды в конвеере завершились успешно.
+
+    Полезно, если нужно отслеживать код выполнения всего конвеера команд с целью выполнения какой-либо логики, если одна из команд в
+    конвеере выполнилась неуспешно.
+
+1. Используя `-o stat` для `ps`, определите, какой наиболее часто встречающийся статус у процессов в системе. В `man ps` ознакомьтесь (`/PROCESS STATE CODES`) что значат дополнительные к основной заглавной буквы статуса процессов. Его можно не учитывать при расчете (считать S, Ss или Ssl равнозначными).
+
+    С учетом того, что состояние процесса определяется его первой буквой, то наиболее часто встречающийся статус у процессов в системе является     статус `Sleep` (S)
+
+    ```bash
+     $ ps -ax -o stat | sort | uniq -c | sort -rn
+         53 Sl+
+         45 I<
+         41 S
+         38 Ssl
+         38 S<
+         19 Sl
+         18 Ss
+         15 I
+         11 S+
+          4 SLl+
+          4 SLl
+          2 SN
+          2 Rl+
+          2 D
+          1 STAT
+          1 Ssl+
+          1 Ss+
+          1 S<s
+          1 SNsl
+          1 S<l
+          1 R+
+          1 Dsl
+    ```
+
+    Также можно использовать опцию `state`, чтобы вывести процессы с одной буквой в их состояниии:
+
+    ```bash
+    $ ps -ax -o state | sort | uniq -c | sort -rn
+        235 S
+         59 I
+          4 D
+          2 R
+    ```
+
+    `<` - процесс с высоким приоритетом
+
+    `N` -  процесс с низким приоритетом
+
+    `L` - процес имеет страницы заблокированные в памяти
+
+    `s` - лидер сессии/сеанса
+
+    `l` - многопоточный процесс  (с использованием CLONE_THREAD)
+
+    `+` - процесс запущен/находится в группе процессов, который запущены на переднем плане(foreground)
