@@ -1,283 +1,502 @@
-# Домашнее задание к занятию "3.3. Операционные системы, лекция 1"
+# Домашнее задание к занятию "3.5. Файловые системы"
 
-1. Какой системный вызов делает команда `cd`? В прошлом ДЗ мы выяснили, что `cd` не является самостоятельной  программой, это `shell builtin`, поэтому запустить `strace` непосредственно на `cd` не получится. Тем не менее, вы можете запустить `strace` на `/bin/bash -c 'cd /tmp'`. В этом случае вы увидите полный список системных вызовов, которые делает сам `bash` при старте. Вам нужно найти тот единственный, который относится именно к `cd`.
+1. Узнайте о [sparse](https://ru.wikipedia.org/wiki/%D0%A0%D0%B0%D0%B7%D1%80%D0%B5%D0%B6%D1%91%D0%BD%D0%BD%D1%8B%D0%B9_%D1%84%D0%B0%D0%B9%D0%BB) (разряженных) файлах.
 
-    Cистемный вызов `chdir`
-    `chdir("/tmp")`
+1. Могут ли файлы, являющиеся жесткой ссылкой на один объект, иметь разные права доступа и владельца? Почему?
 
-1. Попробуйте использовать команду `file` на объекты разных типов на файловой системе. Например:
-    ```bash
-    vagrant@netology1:~$ file /dev/tty
-    /dev/tty: character special (5/0)
-    vagrant@netology1:~$ file /dev/sda
-    /dev/sda: block special (8/0)
-    vagrant@netology1:~$ file /bin/bash
-    /bin/bash: ELF 64-bit LSB shared object, x86-64
-    ```
-    Используя `strace` выясните, где находится база данных `file` на основании которой она делает свои догадки.
+Нет не могут.
+
+Файлы, которые явлются жесткими ссылками на один объект равноправны и неотличимы друг от друга по причине того, что все они
+ссылаются на один и тот же индексный дескриптор(i-node) объекта
+В этом индексном дескрипторе в том числе указаны права доступа, владелец/группа, время создания/модификации/доступа и другая информация
+самого файла/объекта
+
+
+1. Сделайте `vagrant destroy` на имеющийся инстанс Ubuntu. Замените содержимое Vagrantfile следующим:
 
     ```bash
-    $ strace file /dev/sda
-    openat(AT_FDCWD, "/etc/magic", O_RDONLY) = 3
-    openat(AT_FDCWD, "/usr/share/misc/magic.mgc", O_RDONLY) = 3
+    Vagrant.configure("2") do |config|
+      config.vm.box = "bento/ubuntu-20.04"
+      config.vm.provider :virtualbox do |vb|
+        lvm_experiments_disk0_path = "/tmp/lvm_experiments_disk0.vmdk"
+        lvm_experiments_disk1_path = "/tmp/lvm_experiments_disk1.vmdk"
+        vb.customize ['createmedium', '--filename', lvm_experiments_disk0_path, '--size', 2560]
+        vb.customize ['createmedium', '--filename', lvm_experiments_disk1_path, '--size', 2560]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', lvm_experiments_disk0_path]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', lvm_experiments_disk1_path]
+      end
+    end
     ```
-    База данных `file` находится в файле `/usr/share/misc/magic.mgc`,
-    который в свою очередь является символьной ссылкой на файл `/usr/lib/file/magic.mgc`
-    ```bash
-    $ ls -al  /usr/share/misc/ | grep magic
-    lrwxrwxrwx   1 root root      13 мар 21  2020 magic -> ../file/magic
-    lrwxrwxrwx   1 root root      24 мая 12  2020 magic.mgc -> ../../lib/file/magic.mgc
-    ```
 
-1. Предположим, приложение пишет лог в текстовый файл. Этот файл оказался удален (deleted в lsof), однако возможности сигналом сказать приложению переоткрыть файлы или просто перезапустить приложение – нет. Так как приложение продолжает писать в удаленный файл, место на диске постепенно заканчивается. Основываясь на знаниях о перенаправлении потоков предложите способ обнуления открытого удаленного файла (чтобы освободить место на файловой системе).
-
-   - Узнаем идентификатор процесса `pid`, который пишит в удаленный файл
-   - Через lsof или proc (`ls -al /proc/$pid/fd/`)узнаем файловый дескриптор, который имеется у удаленного файла
-   - Очищаем содержимое удаленного файла через его файловый дескриптор
-
-   Например
-
-   Идентифкатор процесса, который пишит в удаленный файл
-   ```bash
-   $ pgrep skypeforlinux
-   9748
-   ```
-
-   файловый дескриптор, который имеется у удаленного файла - 57
-
-   Размер фала 16 байт
-
-   ```bash
-   $ lsof -p 9748 | grep '(deleted)|SIZE'
-   COMMAND    PID   USER   FD      TYPE             DEVICE  SIZE/OFF    NODE NAME
-   skypeforl 9748 eugene   57u      REG                8,7        16 1310838 /tmp/skype-9748/skypert_sessionkey1ZXsIm (deleted)
-   ```
-
-   Очищаем содержимое удаленного файла через файловый дескриптор удаленного файла и проверяем его нулевой размер
-   ```bash
-   $ :> "/proc/9748/fd/57"
-   ```
-   ```bash
-   $ lsof -p 9748 | grep '(deleted)|SIZE'
-   COMMAND    PID   USER   FD      TYPE             DEVICE  SIZE/OFF    NODE NAME
-   skypeforl 9748 eugene   57u      REG                8,7         0 1310838 /tmp/skype-9748/skypert_sessionkey1ZXsIm (deleted)
-   ```
-
-
-
-1. Занимают ли зомби-процессы какие-то ресурсы в ОС (CPU, RAM, IO)?
-
-    Нет, зомби процесс - это процесс, который уже завершил свое выполнение, но по какой-либо причине
-    родительский процесс не обработал код возврата дочернего процесса, в результате чего такой дочерний процесс
-    становится зомби-процессом и присутствует в списке процессов в операционной системе не потребляя никаких ресурсов т.к. по факту это процесс        уже был выполнен
-
-1. В iovisor BCC есть утилита `opensnoop`:
-    ```bash
-    root@vagrant:~# dpkg -L bpfcc-tools | grep sbin/opensnoop
-    /usr/sbin/opensnoop-bpfcc
-    ```
-    На какие файлы вы увидели вызовы группы `open` за первую секунду работы утилиты? Воспользуйтесь пакетом `bpfcc-tools` для Ubuntu 20.04. Дополнительные [сведения по установке](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
+    Данная конфигурация создаст новую виртуальную машину с двумя дополнительными неразмеченными дисками по 2.5 Гб.
 
     ```bash
-    $ apt-get install bpfcc-tools
+    # lsblk
+    NAME                 MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+    sda                    8:0    0   64G  0 disk
+    ├─sda1                 8:1    0  512M  0 part /boot/efi
+    ├─sda2                 8:2    0    1K  0 part
+    └─sda5                 8:5    0 63.5G  0 part
+      ├─vgvagrant-root   253:0    0 62.6G  0 lvm  /
+      └─vgvagrant-swap_1 253:1    0  980M  0 lvm  [SWAP]
+    sdb                    8:16   0  2.5G  0 disk
+    sdc                    8:32   0  2.5G  0 disk
+    ```
+
+
+1. Используя `fdisk`, разбейте первый диск на 2 раздела: 2 Гб, оставшееся пространство.
+    ```bash
+    # fdisk /dev/sdb
+
+    Welcome to fdisk (util-linux 2.34).
+    Changes will remain in memory only, until you decide to write them.
+    Be careful before using the write command.
+
+    Device does not contain a recognized partition table.
+    Created a new DOS disklabel with disk identifier 0x7097cdc6.
+
+    Command (m for help): p
+    Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Command (m for help): n
+    Partition type
+       p   primary (0 primary, 0 extended, 4 free)
+       e   extended (container for logical partitions)
+    Select (default p): p
+    Partition number (1-4, default 1): 1
+    First sector (2048-5242879, default 2048):
+    Last sector, +/-sectors or +/-size{K,M,G,T,P} (2048-5242879, default 5242879): +2G
+
+    Created a new partition 1 of type 'Linux' and of size 2 GiB.
+
+    Command (m for help): p
+    Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot Start     End Sectors Size Id Type
+    /dev/sdb1        2048 4196351 4194304   2G 83 Linux
+
+    Command (m for help): n
+    Partition type
+       p   primary (1 primary, 0 extended, 3 free)
+       e   extended (container for logical partitions)
+    Select (default p): p
+    Partition number (2-4, default 2):
+    First sector (4196352-5242879, default 4196352):
+    Last sector, +/-sectors or +/-size{K,M,G,T,P} (4196352-5242879, default 5242879):
+
+    Created a new partition 2 of type 'Linux' and of size 511 MiB.
+
+    Command (m for help): p
+    Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdb1          2048 4196351 4194304    2G 83 Linux
+    /dev/sdb2       4196352 5242879 1046528  511M 83 Linux
+
+    Command (m for help): w
+    The partition table has been altered.
+    Calling ioctl() to re-read partition table.
+    Syncing disks.
+    ```
+    ```bash
+    # fdisk /dev/sdb
+    Welcome to fdisk (util-linux 2.34).
+    Changes will remain in memory only, until you decide to write them.
+    Be careful before using the write command.
+
+    Command (m for help): p
+    Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdb1          2048 4196351 4194304    2G 83 Linux
+    /dev/sdb2       4196352 5242879 1046528  511M 83 Linux
+
+    Command (m for help): t
+    Partition number (1,2, default 2): 1
+
+    Hex code (type L to list all codes): fd
+
+    Changed type of partition 'Linux' to 'Linux raid autodetect'.
+
+    Command (m for help): t
+    Partition number (1,2, default 2): 2
+    Hex code (type L to list all codes): fd
+
+    Changed type of partition 'Linux' to 'Linux raid autodetect'.
+
+    Command (m for help): w
+    The partition table has been altered.
+    Calling ioctl() to re-read partition table.
+    Syncing disks.
+    ```
+
+1. Используя `sfdisk`, перенесите данную таблицу разделов на второй диск.
+
+    ```bash
+    # sfdisk -d /dev/sdb | sfdisk --force /dev/sdc
+    Checking that no-one is using this disk right now ... OK
+
+    Disk /dev/sdc: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Created a new DOS disklabel with disk identifier 0x7097cdc6.
+    /dev/sdc1: Created a new partition 1 of type 'Linux raid autodetect' and of size 2 GiB.
+    /dev/sdc2: Created a new partition 2 of type 'Linux raid autodetect' and of size 511 MiB.
+    /dev/sdc3: Done.
+
+    New situation:
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdc1          2048 4196351 4194304    2G fd Linux raid autodetect
+    /dev/sdc2       4196352 5242879 1046528  511M fd Linux raid autodetect
+
+    The partition table has been altered.
+    Calling ioctl() to re-read partition table.
+    Syncing disks.
     ```
 
     ```bash
-    $ dpkg -L bpfcc-tools | grep sbin/opensnoop
-    /usr/sbin/opensnoop-bpfcc
+    # lsblk
+    NAME                 MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+    sda                    8:0    0   64G  0 disk
+    ├─sda1                 8:1    0  512M  0 part /boot/efi
+    ├─sda2                 8:2    0    1K  0 part
+    └─sda5                 8:5    0 63.5G  0 part
+      ├─vgvagrant-root   253:0    0 62.6G  0 lvm  /
+      └─vgvagrant-swap_1 253:1    0  980M  0 lvm  [SWAP]
+    sdb                    8:16   0  2.5G  0 disk
+    ├─sdb1                 8:17   0    2G  0 part
+    └─sdb2                 8:18   0  511M  0 part
+    sdc                    8:32   0  2.5G  0 disk
+    ├─sdc1                 8:33   0    2G  0 part
+    └─sdc2                 8:34   0  511M  0 part
+    ```
+    ```bash
+    # fdisk -l
+    ....
+    Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdb1          2048 4196351 4194304    2G fd Linux raid autodetect
+    /dev/sdb2       4196352 5242879 1046528  511M fd Linux raid autodetect
+
+
+    Disk /dev/sdc: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    Disklabel type: dos
+    Disk identifier: 0x7097cdc6
+
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdc1          2048 4196351 4194304    2G fd Linux raid autodetect
+    /dev/sdc2       4196352 5242879 1046528  511M fd Linux raid autodetect
+    ```
+
+1. Соберите `mdadm` RAID1 на паре разделов 2 Гб.
+    ```bash
+    # mdadm --create --verbose /dev/md0 --level=1 --raid-devices=2 /dev/sdb1 /dev/sdc1
+    mdadm: Note: this array has metadata at the start and
+        may not be suitable as a boot device.  If you plan to
+        store '/boot' on this device please ensure that
+        your boot-loader understands md/v1.x metadata, or use
+        --metadata=0.90
+    mdadm: size set to 2094080K
+    Continue creating array? y
+    mdadm: Defaulting to version 1.2 metadata
+    mdadm: array /dev/md0 started.
+    ```
+    ```bash
+    # cat /proc/mdstat
+    Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
+    md0 : active raid1 sdc1[1] sdb1[0]
+          2094080 blocks super 1.2 [2/2] [UU]
+
+    unused devices: <none>
+    ```
+
+1. Соберите `mdadm` RAID0 на второй паре маленьких разделов.
+    ```bash
+    # mdadm --create --verbose /dev/md1 --level=0 --raid-devices=2 /dev/sdb2 /dev/sdc2
+    mdadm: chunk size defaults to 512K
+    mdadm: Defaulting to version 1.2 metadata
+    mdadm: array /dev/md1 started.
+    ```
+    ```bash
+    # cat /proc/mdstat
+    Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
+    md1 : active raid0 sdc2[1] sdb2[0]
+          1042432 blocks super 1.2 512k chunks
+
+    md0 : active raid1 sdc1[1] sdb1[0]
+          2094080 blocks super 1.2 [2/2] [UU]
+
+    unused devices: <none>
+    ```
+
+1. Создайте 2 независимых PV на получившихся md-устройствах.
+    ```bash
+    # pvcreate /dev/md0
+      Physical volume "/dev/md0" successfully created.
+    ```
+    ```bash
+    # pvcreate /dev/md1
+      Physical volume "/dev/md1" successfully created.
+    ```
+    ```bash
+    # pvs | grep md
+      /dev/md0             lvm2 ---    <2.00g   <2.00g
+      /dev/md1             lvm2 ---  1018.00m 1018.00m
+    ```
+
+1. Создайте общую volume-group на этих двух PV.
+
+    ```bash
+    # vgcreate myvggroup /dev/md0 /dev/md1
+      Volume group "myvggroup" successfully created
+    ```
+    ```bash
+    # vgs | grep myvggroup
+      myvggroup   2   0   0 wz--n-  <2.99g <2.99g
+    ```
+    ```bash
+    # vgdisplay myvggroup
+      --- Volume group ---
+      VG Name               myvggroup
+      System ID
+      Format                lvm2
+      Metadata Areas        2
+      Metadata Sequence No  1
+      VG Access             read/write
+      VG Status             resizable
+      MAX LV                0
+      Cur LV                0
+      Open LV               0
+      Max PV                0
+      Cur PV                2
+      Act PV                2
+      VG Size               <2.99 GiB
+      PE Size               4.00 MiB
+      Total PE              765
+      Alloc PE / Size       0 / 0
+      Free  PE / Size       765 / <2.99 GiB
+      VG UUID               kOgGiQ-GDkx-uV23-6tRg-yBDE-Lng0-2rTAns
+    ```
+1. Создайте LV размером 100 Мб, указав его расположение на PV с RAID0.
+
+    ```bash
+    # lvcreate -n mylv -L 100M myvggroup /dev/md1
+      Logical volume "mylv" created.
+    ```
+    ```bash
+    # lvs -a -o +devices | grep mylv
+      mylv   myvggroup -wi-a----- 100.00m  /dev/md1(0)
+    ```
+
+1. Создайте `mkfs.ext4` ФС на получившемся LV.
+
+    ```bash
+    # mkfs.ext4 /dev/mapper/myvggroup-mylv
+    mke2fs 1.45.5 (07-Jan-2020)
+    Creating filesystem with 25600 4k blocks and 25600 inodes
+
+    Allocating group tables: done
+    Writing inode tables: done
+    Creating journal (1024 blocks): done
+    Writing superblocks and filesystem accounting information: done
+    ```
+
+1. Смонтируйте этот раздел в любую директорию, например, `/tmp/new`.
+
+    ```bash
+    # mkdir /tmp/new
+    # mount /dev/mapper/myvggroup-mylv /tmp/new
+    ```
+    ```bash
+    # ls -al /tmp/new
+    total 24
+    drwxr-xr-x  3 root root  4096 Aug 23 21:27 .
+    drwxrwxrwt 11 root root  4096 Aug 23 21:28 ..
+    drwx------  2 root root 16384 Aug 23 21:27 lost+found
+    ```
+
+1. Поместите туда тестовый файл, например `wget https://mirror.yandex.ru/ubuntu/ls-lR.gz -O /tmp/new/test.gz`.
+    ```bash
+    # wget -q --no-check-certificate  https://mirror.yandex.ru/ubuntu/ls-lR.gz -O /tmp/new/test.gz
+    # ls -al /tmp/new/test.gz
+    -rw-r--r-- 1 root root 20980365 Авг 19 07:09 /tmp/test.gz
+    ```
+
+1. Прикрепите вывод `lsblk`.
+    ```bash
+    # lsblk
+    NAME                 MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+    sda                    8:0    0   64G  0 disk
+    ├─sda1                 8:1    0  512M  0 part  /boot/efi
+    ├─sda2                 8:2    0    1K  0 part
+    └─sda5                 8:5    0 63.5G  0 part
+      ├─vgvagrant-root   253:0    0 62.6G  0 lvm   /
+      └─vgvagrant-swap_1 253:1    0  980M  0 lvm   [SWAP]
+    sdb                    8:16   0  2.5G  0 disk
+    ├─sdb1                 8:17   0    2G  0 part
+    │ └─md0                9:0    0    2G  0 raid1
+    └─sdb2                 8:18   0  511M  0 part
+      └─md1                9:1    0 1018M  0 raid0
+        └─myvggroup-mylv 253:2    0  100M  0 lvm   /tmp/new
+    sdc                    8:32   0  2.5G  0 disk
+    ├─sdc1                 8:33   0    2G  0 part
+    │ └─md0                9:0    0    2G  0 raid1
+    └─sdc2                 8:34   0  511M  0 part
+      └─md1                9:1    0 1018M  0 raid0
+        └─myvggroup-mylv 253:2    0  100M  0 lvm   /tmp/new
+    ```
+1. Протестируйте целостность файла:
+
+    ```bash
+    root@vagrant:~# gzip -t /tmp/new/test.gz
+    root@vagrant:~# echo $?
+    0
+    ```
+    ```bash
+    # gzip -t /tmp/new/test.gz; echo $?
+    0
+    ```
+
+1. Используя pvmove, переместите содержимое PV с RAID0 на RAID1.
+
+    ```bash
+    # pvmove /dev/md1 /dev/md0
+      /dev/md1: Moved: 16.00%
+      /dev/md1: Moved: 100.00%
+    ```
+    ```bash
+    # lvs -a -o +devices | grep mylv
+      mylv   myvggroup -wi-ao---- 100.00m  /dev/md0(0)
+    ```
+1. Сделайте `--fail` на устройство в вашем RAID1 md.
+    ```bash
+    # mdadm --manage /dev/md0 --fail /dev/sdc1
+    mdadm: set /dev/sdc1 faulty in /dev/md0
     ```
 
     ```bash
-    $ strace  -e openat opensnoop-bpfcc > out.txt 2>&1
+    # mdadm --detail /dev/md0
+    /dev/md0:
+               Version : 1.2
+         Creation Time : Mon Aug 23 21:01:59 2021
+            Raid Level : raid1
+            Array Size : 2094080 (2045.00 MiB 2144.34 MB)
+         Used Dev Size : 2094080 (2045.00 MiB 2144.34 MB)
+          Raid Devices : 2
+         Total Devices : 2
+           Persistence : Superblock is persistent
+
+           Update Time : Mon Aug 23 21:43:59 2021
+                 State : clean, degraded
+        Active Devices : 1
+       Working Devices : 1
+        Failed Devices : 1
+         Spare Devices : 0
+
+    Consistency Policy : resync
+
+                  Name : vagrant:0  (local to host vagrant)
+                  UUID : 0b9a33e4:89014ba5:14675808:fae75e83
+                Events : 19
+
+        Number   Major   Minor   RaidDevice State
+           0       8       17        0      active sync   /dev/sdb1
+           -       0        0        1      removed
+
+           1       8       33        -      faulty   /dev/sdc1
     ```
+
+1. Подтвердите выводом `dmesg`, что RAID1 работает в деградированном состоянии.
 
     ```bash
-    $ cat open out.txt
-    execve("/usr/sbin/opensnoop-bpfcc", ["opensnoop-bpfcc"], 0x7ffea352afb0 /* 16 vars */) = 0
-    openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libpthread.so.0", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libdl.so.2", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libutil.so.1", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libexpat.so.1", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libz.so.1", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/usr/lib/locale/locale-archive", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache", O_RDONLY) = 3
-    openat(AT_FDCWD, "/usr/bin/pyvenv.cfg", O_RDONLY) = -1 ENOENT (No such file or directory)
-    openat(AT_FDCWD, "/usr/pyvenv.cfg", O_RDONLY) = -1 ENOENT (No such file or directory)
-    openat(AT_FDCWD, "/etc/localtime", O_RDONLY|O_CLOEXEC) = 3
-    openat(AT_FDCWD, "/usr/lib/python3.8", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_DIRECTORY) = 3
-    .....
+    # dmesg -T | grep md/raid1:md0
+    ......
+    [Mon Aug 23 21:43:56 2021] md/raid1:md0: Disk failure on sdc1, disabling device.
+                               md/raid1:md0: Operation continuing on 1 devices.
     ```
-1. Какой системный вызов использует `uname -a`? Приведите цитату из man по этому системному вызову, где описывается альтернативное местоположение в `/proc`, где можно узнать версию ядра и релиз ОС.
-
+1. Протестируйте целостность файла, несмотря на "сбойный" диск он должен продолжать быть доступен:
 
     ```bash
-    $ strace uname -a
-    ```
-
-    ```bash
-    uname({sysname="Linux", nodename="vagrant", ...}) = 0
-    uname({sysname="Linux", nodename="vagrant", ...}) = 0
-    write(1, "Linux vagrant 5.4.0-80-generic #"..., 105Linux vagrant 5.4.0-80-generic #90-Ubuntu SMP Fri Jul 9 22:49:44 UTC 2021 x86_64 x86_64     x86_64 GNU/Linux
-    ) = 105
-    ```
-
-    Системный вызов `uname`
-
-    ```bash
-    $ apt-get install manpages-dev
+    root@vagrant:~# gzip -t /tmp/new/test.gz
+    root@vagrant:~# echo $?
+    0
     ```
     ```bash
-    $ man 2 uname | grep /proc
-           Part of the utsname information is also accessible via /proc/sys/kernel/{ostype, hostname, osrelease, version, domainname}.
-    ```
-    ```bash
-    $ cat /proc/sys/kernel/hostname
-    vagrant
-    $ cat /proc/sys/kernel/osrelease
-    5.4.0-80-generic
-    $ cat /proc/sys/kernel/version
-    #90-Ubuntu SMP Fri Jul 9 22:49:44 UTC 2021
-    $ cat /proc/sys/kernel/domainname
-    (none)
-    ```
-1. Чем отличается последовательность команд через `;` и через `&&` в bash? Например:
-    ```bash
-    root@netology1:~# test -d /tmp/some_dir; echo Hi
-    Hi
-    root@netology1:~# test -d /tmp/some_dir && echo Hi
-    root@netology1:~#
-    ```
-    Есть ли смысл использовать в bash `&&`, если применить `set -e`?
-
-
-     - последовательность команд через `;`
-
-    Команды будут выполнены последовательно независимо от кода возврата/выхода предыдущей команды
-    т.е. сначало выполнится команда  `test -d /tmp/some_dir` с кодом возврата 1 т.к. каталога `/tmp/some_dir` не существует
-    Затем выполнится команда `echo Hi`
-
-    - последовательность команд через `&&`
-
-    `&&` - выполнить логическую операцию `И`
-    Сначало выполняется первая команда, а вторая команда будет выполняться только в том случае, если первая команда
-    завершилась успешно
-    т.е сначало выполнится команду `test -d /tmp/some_dir` с кодом возврата 1 т.к. каталога `/tmp/some_dir` не существует, поэтому
-    команда `echo Hi` выполняться не будет
-
-
-
-    Set позволяет управлять параметрами оболочки и командной строки
-
-    Параметр `-e (errexit)` приводит к прекращению выполнения ВСЕХ дальнейших команд и немедленному выходу
-    если текущая команда выполнилась с кодом выхода отличным от нуля
-
-    А конструкция `&&` позволяет не выполнять следующую команду, если предыдущая завершилась с кодом выхода отличным от нуля
-    При этом все остальные команды, которые не следуют за конструкцией `&&` могут/будут выполняться
-
-    т.е. если, например, в скрипте есть несколько команд и необходимо сразу прекращать выполнение скрипта,если завершение какой-либо команды
-    было неуспешным (не с нулевым кодом возврата/завершения), то тогда нужно использовать опцию `-e(errexit)` через установку
-    в начале скрипта этого параметра с помощью
-    `set -e`
-
-    Если же в таком же скрипте одна из команда не должна выполняться,если предыдущая выполнилась некорректно,
-    но при этом нужно продолжать выполнение остальных команд, тогда нужно использовать конструкцию `&&`
-
-    При этом если глобально( в самом начале скрипта) установлен флаг `-e` его можно отключить для команды(в данном случае команды command 3), чье неуспешное завершение приводит к тому, что следующая команда не выполнится, но при этом продолжится выполнение дальнейших команд в  скрипте
-
-    ```bash
-    #!/usr/bin/env bash
-    set -e
-    command 1
-    command 2
-    set +e
-    command 3 && command4
-    set -e
-    command5
+    # gzip -t /tmp/new/test.gz; echo $?
+    0
     ```
 
-1. Из каких опций состоит режим bash `set -euxo pipefail` и почему его хорошо было бы использовать в сценариях?
 
+ ---
 
-    `-e(errexit)` - прекращение выполнения ВСЕХ дальнейших команд и немедленный выход со скрипта, если текущая команда выполнилась с кодом выхода отличным от нуля.
+## Как сдавать задания
 
-    Полезно, когда нужно прерать дальнейшее выполнение команд/скрипта, если зафейлилась предыдущая команда
+Обязательными к выполнению являются задачи без указания звездочки. Их выполнение необходимо для получения зачета и диплома о профессиональной переподготовке.
 
-    `-u(nounset)` - Интерпретировать при подстановках неустановленные переменные и параметры, как ошибки (кроме специальных переменных `$@` и `$*`)
-    т.е. при попытке подставить неопределенную переменную или параметр, интерпретатор bash выведет сообщение об ошибке и прекратит дальнейшее
-    выполнение команд/скрипта.
+Задачи со звездочкой (*) являются дополнительными задачами и/или задачами повышенной сложности. Они не являются обязательными к выполнению, но помогут вам глубже понять тему.
 
-    Полезно, чтобы выполнять команды с гарантированно установленными переменными/параметрами
+Домашнее задание выполните в файле readme.md в github репозитории. В личном кабинете отправьте на проверку ссылку на .md-файл в вашем репозитории.
 
-    Например, чтобы не получилось `rm -rf /etc/${NON_SETUP_VARIABLE}` и при неустановленной переменной `NON_SETUP_VARIABLE`
-    ее значение ожидаемо подставится в пустое значение/null в результате чего получится `rm -rf /etc/`, что приведет к удалению каталога `/etc` , а это явно не то, что задумывалось.
+Также вы можете выполнить задание в [Google Docs](https://docs.google.com/document/u/0/?tgif=d) и отправить в личном кабинете на проверку ссылку на ваш документ.
+Название файла Google Docs должно содержать номер лекции и фамилию студента. Пример названия: "1.1. Введение в DevOps — Сусанна Алиева".
 
+Если необходимо прикрепить дополнительные ссылки, просто добавьте их в свой Google Docs.
 
-    `-x(xtrace)` - отображать команды вместе с их аргументами, когда они выполняются.
+Перед тем как выслать ссылку, убедитесь, что ее содержимое не является приватным (открыто на комментирование всем, у кого есть ссылка), иначе преподаватель не сможет проверить работу. Чтобы это проверить, откройте ссылку в браузере в режиме инкогнито.
 
-    Это обеспечивает пошаговую трассировку выполнения команд.
+[Как предоставить доступ к файлам и папкам на Google Диске](https://support.google.com/docs/answer/2494822?hl=ru&co=GENIE.Platform%3DDesktop)
 
-    Полезно для дебага выполнения команд.
+[Как запустить chrome в режиме инкогнито ](https://support.google.com/chrome/answer/95464?co=GENIE.Platform%3DDesktop&hl=ru)
 
-    `-o` - активирует заданный режим работы
+[Как запустить  Safari в режиме инкогнито ](https://support.apple.com/ru-ru/guide/safari/ibrw1069/mac)
 
-    В данном случае активирует режим работы `pipefail`,который
-    заменяет код возврата всего конвеера(pipeline) на код возврата последней неудачно завершившейся команды
-    или нулевой код возврата, если все команды в конвеере завершились успешно.
+Любые вопросы по решению задач задавайте в чате Slack.
 
-    Полезно, если нужно отслеживать код выполнения всего конвеера команд с целью выполнения какой-либо логики, если одна из команд в
-    конвеере выполнилась неуспешно.
-
-1. Используя `-o stat` для `ps`, определите, какой наиболее часто встречающийся статус у процессов в системе. В `man ps` ознакомьтесь (`/PROCESS STATE CODES`) что значат дополнительные к основной заглавной буквы статуса процессов. Его можно не учитывать при расчете (считать S, Ss или Ssl равнозначными).
-
-    С учетом того, что состояние процесса определяется его первой буквой, то наиболее часто встречающийся статус у процессов в системе является     статус `Sleep` (S)
-
-    ```bash
-     $ ps -ax -o stat | sort | uniq -c | sort -rn
-         53 Sl+
-         45 I<
-         41 S
-         38 Ssl
-         38 S<
-         19 Sl
-         18 Ss
-         15 I
-         11 S+
-          4 SLl+
-          4 SLl
-          2 SN
-          2 Rl+
-          2 D
-          1 STAT
-          1 Ssl+
-          1 Ss+
-          1 S<s
-          1 SNsl
-          1 S<l
-          1 R+
-          1 Dsl
-    ```
-
-    Также можно использовать опцию `state`, чтобы вывести процессы с одной буквой в их состояниии:
-
-    ```bash
-    $ ps -ax -o state | sort | uniq -c | sort -rn
-        235 S
-         59 I
-          4 D
-          2 R
-    ```
-
-    `<` - процесс с высоким приоритетом
-
-    `N` -  процесс с низким приоритетом
-
-    `L` - процес имеет страницы заблокированные в памяти
-
-    `s` - лидер сессии/сеанса
-
-    `l` - многопоточный процесс  (с использованием CLONE_THREAD)
-
-    `+` - процесс запущен/находится в группе процессов, который запущены на переднем плане(foreground)
+---
