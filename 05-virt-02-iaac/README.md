@@ -9,10 +9,8 @@
   - воспроизводимость/повторяемость и масштабируемость инфраструктуры
   - отсутствие дрейфа/рассинхронизации конфигураций на различных окружениях
 - Какой из принципов IaaC является основополагающим?
-    Идемпоте́нтность (лат. idem — тот же самый + potens — способный) —
-    это свойство объекта или операции, при повторном выполнении
-    которой мы получаем результат идентичный предыдущему и всем
-    последующим выполнениям.
+
+    Идемпотентность - это свойство объекта или операции, при повторном выполнении которой мы получаем результат идентичный предыдущему и всем последующим выполнениям.
 
 ## Задача 2
 
@@ -132,10 +130,10 @@
     ```
 
     ```bash
-    cd git/devops-netology/05-virt-02-iaac/src/vagrant/
+    $ cd git/devops-netology/05-virt-02-iaac/src/vagrant/
     ```
 
-    ```bash
+    ```yaml
     $ vagrant up
     Bringing machine 'server1.netology' up with 'virtualbox' provider...
     ==> server1.netology: Importing base box 'bento/ubuntu-20.04'...
@@ -181,7 +179,7 @@
     `192.168.192` на `192.168.60`
 
 
-    ```bash
+    ```yaml
     $ vagrant up
     Bringing machine 'server1.netology' up with 'virtualbox' provider...
     ==> server1.netology: Checking if box 'bento/ubuntu-20.04' version '202107.28.0' is up to date...
