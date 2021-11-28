@@ -117,7 +117,7 @@ Docker имеет возможность защищать общий ключ ш
 > --labels my-label=netology \
 > --description "my first network via yc"
 
-id: enpp0t4no5apinqdvq4n
+id: enpni2qmk8djksk84a67
 folder_id: b1gvtndpj707oc5sjqj9
 created_at: "2021-11-28T16:21:43Z"
 name: net
@@ -378,7 +378,7 @@ nkhhfllsu5cq   swarm_monitoring_node-exporter      global       6/6        stefa
 rtmw5wc5kdk1   swarm_monitoring_unsee              replicated   1/1        cloudflare/unsee:v0.8.0
 ```
 
-Просмотр спсика задач в задепленном стеке swarm_monitoring
+Просмотр спсика задач в задепленном стеке `swarm_monitoring`
 ```bash
 $ sudo docker stack ps swarm_monitoring
 ID             NAME                                                          IMAGE                                          NODE                 DESIRED STATE   CURRENT STATE             ERROR     PORTS
