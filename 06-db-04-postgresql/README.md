@@ -183,6 +183,75 @@ test_database=# select attname,avg_width from pg_stats where tablename='orders';
 
 Предложите SQL-транзакцию для проведения данной операции.
 
+
+`Реализация секционирования с использованием наследования, в котором дочерние таблицы(`orders_1`,`orders_2`) будут унаследованы от главной(`orders`) c указанием неперекрывающихся ограничений, определяющие допустимые значения ключей для каждой секции
+
+```sql
+test_database=# CREATE TABLE orders_1 (
+    CHECK (price > '499')
+) INHERITS (orders);
+```
+```sql
+test_database=# CREATE TABLE orders_2 (
+    CHECK (price <= '499')
+) INHERITS (orders);
+```
+Заполнениие таблиц соответствующими значениями из родительской таблицы согласно условию:
+```sql
+test_database=# INSERT INTO orders_1 SELECT * FROM orders WHERE price > 499;
+```
+```sql
+test_database=# INSERT INTO orders_2 SELECT * FROM orders WHERE price <= 499;
+```
+Проверка значений в дочерних таблицах:
+```sql
+test_database=# select * from orders_1;
+ id |       title        | price
+----+--------------------+-------
+  2 | My little database |   500
+  6 | WAL never lies     |   900
+  8 | Dbiezdmin          |   501
+(3 rows)
+```
+```sql
+test_database=# select * from orders_2;
+ id |        title         | price
+----+----------------------+-------
+  1 | War and peace        |   100
+  3 | Adventure psql time  |   300
+  4 | Server gravity falls |   300
+  5 | Log gossips          |   123
+  7 | Me and my bash-pet   |   499
+(5 rows)
+```
+Создание правил(`price_more_than_499` и `price_equal_or_less_than_499`), при которых команды по вставке данных в таблицу `orders`(`ON INSERT TO orders`)
+будут заменяться(`INSTEAD`) на команды по вставке этих данных в соответствующие дочерние таблицы(`INSERT INTO orders_{1.2} VALUES (NEW.*)`)
+в зависимости от значение ключа `price`
+
+```sql
+test_database=# CREATE RULE price_more_than_499 AS ON INSERT TO orders WHERE (price > 499) DO INSTEAD INSERT INTO orders_1 VALUES (NEW.*);
+```
+```sql
+test_database=# CREATE RULE price_equal_or_less_than_499 AS ON INSERT TO orders WHERE (price <= 499) DO INSTEAD INSERT INTO orders_2 VALUES (NEW.*);
+```
+
+Добавляем новые данные и проверяем их наличие в соответствующей дочерней таблице
+```sql
+test_database=# INSERT INTO orders (id, title, price) VALUES ('11', 'Test title', '850');
+```
+```sql
+test_database=# select * from orders_2 where price=850;;
+ id | title | price
+----+-------+-------
+(0 rows)
+```
+```sql
+test_database=# select * from orders_1 where price=850;;
+ id |   title    | price
+----+------------+-------
+ 11 | Test title |   850
+(1 row)
+```
 Можно ли было изначально исключить "ручное" разбиение при проектировании таблицы orders?
 
 Да, например с помощью декларативного секционирования:
@@ -201,72 +270,6 @@ CREATE TABLE orders_2 PARTITION OF orders
 ```sql
 CREATE TABLE orders_1 PARTITION OF orders
     FOR VALUES FROM (500) TO (MAXVALUE);
-```
-
-Непонятно как сделать шардирование уже имеющейся таблицы, которая создавалась без `PARTITION`
-
-
-Несколько раз перечитывал информацию по этим ссылкам, но понимания так и не пришло
-
-https://postgrespro.ru/docs/postgresql/10/ddl-partitioning
-
-https://postgrespro.ru/docs/postgresql/10/sql-createtable#SQL-CREATETABLE-PARTITION
-
-https://postgrespro.ru/docs/enterprise/12/sql-altertable
-
-https://www.postgresql.eu/events/pgconfeu2019/sessions/session/2685/slides/225/pgconf-eu-2019.pdf
-
-Гугление:
-
-Ответа нет
-
-https://stackoverflow.com/questions/59530280/alter-table-to-add-partition-by-range-in-postgres
-
-Тут сложно и непонятно:
-
-https://dba.stackexchange.com/questions/106014/how-to-partition-existing-table-in-postgres
-
-Запрос типа
-`ALTER TABLE orders PARTITION BY RANGE (price);`
-синтаксически неверен
-
-Секционные таблицы можно создавать только,если родитель на который они ссылаются,(в данном случае таблица `orders`) имеет поддержку `PARTITION`
-
-```sql
-CREATE TABLE orders_2 PARTITION OF orders
-    FOR VALUES FROM (MINVALUE) TO (500);
-```
-```sql
-CREATE TABLE orders_1 PARTITION OF orders
-    FOR VALUES FROM (500) TO (MAXVALUE);
-```
-
-Какой вообще порядок действий/алгоритм должен использоваться: создание новой промежуточной таблицы `orders_temp` или изменение текущей
-и т.д., чтобы можно было добавить поддержку `PARTITION` для таблицы `orders` ?
-
-т.е. у меня отсутствует понимание,как это должно происходить
-
-Возможно, какие-то запросы,указанные в этой транзакции, и необходимо действительно использовать для реализации шардирования:
-
-```sql
-BEGIN
-
-CREATE TABLE order_1 AS
-  SELECT *
-  FROM orders
-  WHERE price > 499;
-
-CREATE TABLE order_2 AS
-  SELECT *
-  FROM orders
-  WHERE price <= 499;
-
-ALTER TABLE orders ATTACH PARTITION order_2 FOR VALUES ??????????????????
-ALTER TABLE orders ATTACH PARTITION order_1 FOR VALUES ??????????????????
-ALTER TABLE orders ADD PARTITION order_1 ??????????????????
-ALTER TABLE orders ADD PARTITION order_2 ??????????????????
-
-COMMIT
 ```
 
 ## Задача 4
