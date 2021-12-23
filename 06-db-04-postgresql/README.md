@@ -184,7 +184,7 @@ test_database=# select attname,avg_width from pg_stats where tablename='orders';
 Предложите SQL-транзакцию для проведения данной операции.
 
 
-`Реализация секционирования с использованием наследования, в котором дочерние таблицы(`orders_1`,`orders_2`) будут унаследованы от главной(`orders`) c указанием неперекрывающихся ограничений, определяющие допустимые значения ключей для каждой секции
+Реализация секционирования с использованием наследования, в котором дочерние таблицы (`orders_1`,`orders_2`) будут унаследованы от главной(`orders`) c указанием неперекрывающихся ограничений, определяющие допустимые значения ключей для каждой секции
 
 ```sql
 test_database=# CREATE TABLE orders_1 (
@@ -235,7 +235,7 @@ test_database=# CREATE RULE price_more_than_499 AS ON INSERT TO orders WHERE (pr
 test_database=# CREATE RULE price_equal_or_less_than_499 AS ON INSERT TO orders WHERE (price <= 499) DO INSTEAD INSERT INTO orders_2 VALUES (NEW.*);
 ```
 
-Добавляем новые данные и проверяем их наличие в соответствующей дочерней таблице
+Добавление новых данных и проверка их наличия в соответствующей дочерней таблице
 ```sql
 test_database=# INSERT INTO orders (id, title, price) VALUES ('11', 'Test title', '850');
 ```
