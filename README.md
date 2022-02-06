@@ -1,50 +1,53 @@
-# Домашние задания по курсу «Виртуализация, базы данных и Terraform»
+# Домашние задания по курсу «CI, мониторинг и управление конфигурациями»
 
-В этом репозитории расположены мои ответы на домашние задания, которые содержатся в репозитарии в ветке `virt-11`
+В этом репозитории расположены мои ответы на домашние задания, которые содержатся в репозитарии в ветках `master/MNT-7`
 
-[Branch: virt-11](https://github.com/netology-code/virt-homeworks/tree/virt-11)
+[Branch: MNT-7](https://github.com/netology-code/mnt-homeworks/tree/MNT-7)
 
-## Модуль 5. Виртуализация
+[Branch: master](https://github.com/netology-code/mnt-homeworks/tree/master)
 
-5.1. [Введение в виртуализацию. Типы и функции гипервизоров. Обзор рынка вендоров и областей применения](05-virt-01-basics/README.md)
+## Модуль 8. Система управления конфигурациями
 
-5.2. [Применение принципов IaaC в работе с виртуальными машинами](05-virt-02-iaac/README.md)
+8.1. [Введение в Ansible](08-ansible-01-base/README.md)
 
-5.3. [Введение. Экосистема. Архитектура. Жизненный цикл Docker контейнера](05-virt-03-docker/README.md)
+8.2. [Работа с Playbook](08-ansible-02-playbook/README.md)
 
-5.4. [Оркестрация группой Docker контейнеров на примере Docker Compose.](05-virt-04-docker-compose/README.md)
+8.3. [Использование YandexCloud](08-ansible-03-yandex/README.md)
 
-5.5. [ Оркестрация кластером Docker контейнеров на примере Docker Swarm.](05-virt-05-docker-swarm/README.md)
+8.4. [Работа с Roles](08-ansible-04-role/README.md)
 
-## Модуль 6. Администрирование баз данных
+8.5. [Тестирование Roles](08-ansible-05-testing/README.md)
 
-6.1. [Типы и структура СУБД](06-db-01-basics)
+8.6. [Создание собственных модулей](08-ansible-06-module/README.md)
 
-6.2. [SQL](06-db-02-sql)
+## Модуль 9. Непрерывная разработка и интеграция
 
-6.3. [MySQL](06-db-03-mysql)
+9.1. [Жизненный цикл ПО](09-ci-01-intro/README.md)
 
-6.4. [PostgreSQL](06-db-04-postgresql)
+9.2. [DevOps и SRE](09-ci-02-devops/README.md)
 
-6.5. [Elasticsearch](06-db-05-elasticsearch)
+9.3. [Процессы CI/CD](09-ci-03-cicd/README.md)
 
-6.6. [Troubleshooting](06-db-06-troobleshooting)
+9.4. [Jenkins](09-ci-04-jenkins/README.md)
+
+9.5. [Teamcity](09-ci-05-teamcity/README.md)
+
+9.6. [Gitlab](09-ci-06-gitlab/README.md)
+
+## Модуль 10. Системы мониторинга
+
+10.1. [Зачем и что нужно мониторить](10-monitoring-01-base/README.md)
+
+10.2. [Системы для мониторинга](10-monitoring-02-systems/README.md)
+
+10.3. [Средство визуализации Grafana](10-monitoring-03-grafana/README.md)
+
+10.4. [Система сбора логов ELK](10-monitoring-04-elk/README.md)
+
+10.5. [Система-перехватчик ошибок Sentry](10-monitoring-05-sentry/README.md)
+
+10.6. [Инцидент-менеджмент](10-monitoring-06-incident-management/README.md)
 
 
-## Модуль 7. Облачная инфраструктура. Terraform
-
-7.1. [Конфигурация как код](07-terraform-01-intro)
-
-7.2. [Облачные провайдеры и синтаксис Терраформ](07-terraform-02-syntax)
-
-7.3. [Основы и принцип работы Терраформ](07-terraform-03-basic)
-
-7.4. [Средства командной работы над инфраструктурой](07-terraform-04-teamwork)
-
-7.5. [Введение в Golang](07-terraform-05-golang)
-
-7.6. [Написание собственных провайдеров для Terraform](07-terraform-06-providers)
-
-## Дополнительные материалы
-
-1. [Модуль 6. Администрирование баз данных](https://github.com/netology-code/virt-homeworks/tree/master/additional)
+## Дополнительные материалы к лекциям
+[Дополнительные материалы к лекциям по Ansible](08-ansible-additional/README.md)
