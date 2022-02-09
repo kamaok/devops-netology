@@ -1,0 +1,9 @@
+---
+kibana_version: "7.10.1"
+kibana_home: "/opt/kibana/{{ kibana_version }}"
+
+kibana_server_port: 5601
+kibana_server_host: 0.0.0.0
+kibana_server_name: "My Kibana"
+
+kibana_elasticsearch_hosts: "http://localhost:9200"
