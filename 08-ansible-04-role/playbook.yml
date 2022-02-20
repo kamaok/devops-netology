@@ -1,0 +1,11 @@
+- hosts: elasticsearch
+  roles:
+    - { role: elastic, tags: elastic }
+- hosts: kibana
+  become: true
+  roles:
+    - { role: kibana-role, tags: kibana }
+- hosts: filebeat
+  become: true
+  roles:
+    - { role: filebeat-role, tags: filebeat }
